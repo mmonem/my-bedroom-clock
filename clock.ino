@@ -1,9 +1,10 @@
-#include <LiquidCrystal.h>
+//#include <LiquidCrystal.h>
 #include "Wire.h"
 #define DS3231_I2C_ADDRESS 0x68
 #define PIN_TEMPRATURE 0
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+
+//LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 byte LT[8] = 
 {
@@ -115,6 +116,7 @@ int count = 0;
 void setup()
 {
  // assignes each segment a write number
+/*
  lcd.createChar(0,LT);
  lcd.createChar(1,UB);
  lcd.createChar(2,RT);
@@ -123,9 +125,10 @@ void setup()
  lcd.createChar(5,LR);
  lcd.createChar(6,MB);
  lcd.createChar(7,block);
+*/
  
  // sets the LCD's rows and colums:
- lcd.begin(16, 2);
+// lcd.begin(16, 2);
        
   Wire.begin();
   
@@ -133,6 +136,7 @@ void setup()
 }
 
 void displayDigit(int col, byte x) {
+/*
   lcd.setCursor(col,0);
   lcd.write(digits[x][0]);
   lcd.write(digits[x][1]);
@@ -141,6 +145,7 @@ void displayDigit(int col, byte x) {
   lcd.write(digits[x][3]);
   lcd.write(digits[x][4]);
   lcd.write(digits[x][5]);
+*/
 }
 
 void displayTime() {
@@ -170,17 +175,21 @@ void displayTime() {
   int millies = millis() / 500;
   if (second % 2 == 0)
   {
+/*
     lcd.setCursor(6, 0);
     lcd.write('.');
     lcd.setCursor(6, 1);
     lcd.write('.');
+*/
   }
   else
   {
+/*
     lcd.setCursor(6, 0);
     lcd.write(' ');
     lcd.setCursor(6, 1);
     lcd.write(' ');
+*/
   }
 }
 
@@ -201,10 +210,12 @@ void displayTemprature()
   byte t1 = t / 10;
   byte t2 = t % 10;
   
+/*
   lcd.setCursor(14, 1);
   lcd.print(t1);
   lcd.setCursor(15, 1);
   lcd.print(t2);
+*/
 }
 
 // Convert normal decimal numbers to binary coded decimal
