@@ -113,8 +113,8 @@ void refreshDisplay()
     | e(h2) << 2
     | f(h2) << 3
     | g(h2) << 4
-    | b(h1) << 5
-    | c(h1) << 6
+    | (h1 ? 1  << 5 : 0)
+    | (h1 ? 1  << 6 : 0)
     | 0     << 7;
 
     digitalWrite(PIN_LATCH, LOW);
