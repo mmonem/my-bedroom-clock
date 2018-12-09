@@ -1,6 +1,12 @@
 //#include <LiquidCrystal.h>
 #include "Wire.h"
+
 #define DS3231_I2C_ADDRESS 0x68
+
+#define PIN_LATCH  8
+#define PIN_CLOCK 12
+#define PIN_DATA  11
+
 
 byte h1, h2, m1, m2;
 
@@ -9,8 +15,12 @@ int count = 0;
 
 void setup()
 {
+  Serial.begin(9600);
   Wire.begin();
   // setDS3231time(10,54,22,5,9,11,17);
+  pinMode(PIN_LATCH, OUTPUT);
+  pinMode(PIN_CLOCK, OUTPUT);
+  pinMode(PIN_DATA, OUTPUT);  
 }
 
 void readTime() {
@@ -30,33 +40,40 @@ void readTime() {
   h2 = h % 10;
   m1 = m / 10;
   m2 = m % 10;
+
+/*
+  h1 = 1;
+  h2 = 8;
+  m1 = 8;
+  m2 = 8;
+*/
 }
 
-bool a(byte x) {
-  return (x == 2) || (x == 3) || (x == 5) || (x == 6) || (x == 7) || (x == 8) || (x == 9);
+int a(byte x) {
+  return (x == 0) || (x == 2) || (x == 3) || (x == 5) || (x == 6) || (x == 7) || (x == 8) || (x == 9);
 }
 
-bool b(byte x) {
-  return (x == 1) || (x == 2) || (x == 3) || (x == 4) || (x == 7) || (x == 8) || (x == 9);
+int b(byte x) {
+  return (x == 0) || (x == 1) || (x == 2) || (x == 3) || (x == 4) || (x == 7) || (x == 8) || (x == 9);
 }
 
-bool c(byte x) {
-  return (x == 1) || (x == 3) || (x == 4) || (x == 5) || (x == 6) || (x == 7) || (x == 8) || (x == 9);
+int c(byte x) {
+  return (x == 0) || (x == 1) || (x == 3) || (x == 4) || (x == 5) || (x == 6) || (x == 7) || (x == 8) || (x == 9);
 }
 
-bool d(byte x) {
-  return (x == 2) || (x == 3) || (x == 5) || (x == 6) || (x == 8) || (x == 9);
+int d(byte x) {
+  return (x == 0) || (x == 2) || (x == 3) || (x == 5) || (x == 6) || (x == 8) || (x == 9);
 }
 
-bool e(byte x) {
-  return (x == 2) || (x == 6) || (x == 7) || (x == 8);
+int e(byte x) {
+  return (x == 0) || (x == 2) || (x == 6) || (x == 8);
 }
 
-bool f(byte x) {
-  return (x == 4) || (x == 5) || (x == 6) || (x == 8) || (x == 9);
+int f(byte x) {
+  return (x == 0) || (x == 4) || (x == 5) || (x == 6) || (x == 8) || (x == 9);
 }
 
-bool g(byte x) {
+int g(byte x) {
   return (x == 2) || (x == 3) || (x == 4) || (x == 5) || (x == 6) || (x == 8) || (x == 9);
 }
 
@@ -72,34 +89,39 @@ void refreshDisplay()
    */
   byte b1 = 
       a(m2) << 0
-    + b(m2) << 1
-    + c(m2) << 2
-    + d(m2) << 3
-    + e(m2) << 4
-    + f(m2) << 5
-    + g(m2) << 6
-    + a(m1) << 7;
+    | b(m2) << 1
+    | c(m2) << 2
+    | d(m2) << 3
+    | e(m2) << 4
+    | f(m2) << 5
+    | g(m2) << 6
+    | a(m1) << 7;
     
   byte b2 = 
       b(m1) << 0
-    + c(m1) << 1
-    + d(m1) << 2
-    + e(m1) << 3
-    + f(m1) << 4
-    + g(m1) << 5
-    + a(h2) << 6
-    + b(h2) << 7;
+    | c(m1) << 1
+    | d(m1) << 2
+    | e(m1) << 3
+    | f(m1) << 4
+    | g(m1) << 5
+    | a(h2) << 6
+    | b(h2) << 7;
     
   byte b3 = 
       c(h2) << 0
-    + d(h2) << 1
-    + e(h2) << 2
-    + f(h2) << 3
-    + g(h2) << 4
-    + b(h1) << 5
-    + c(h1) << 6
-    + 0     << 7;
-    
+    | d(h2) << 1
+    | e(h2) << 2
+    | f(h2) << 3
+    | g(h2) << 4
+    | b(h1) << 5
+    | c(h1) << 6
+    | 0     << 7;
+
+    digitalWrite(PIN_LATCH, LOW);
+    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~b3);  
+    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~b2);  
+    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~b1);  
+    digitalWrite(PIN_LATCH, HIGH);
 }
 
 void loop()
