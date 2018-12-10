@@ -6,6 +6,7 @@
 #define PIN_LATCH  8
 #define PIN_CLOCK 12
 #define PIN_DATA  11
+#define PIN_TRANSISTOR  3
 
 
 byte h1, h2, m1, m2;
@@ -20,7 +21,8 @@ void setup()
   // setDS3231time(10,54,22,5,9,11,17);
   pinMode(PIN_LATCH, OUTPUT);
   pinMode(PIN_CLOCK, OUTPUT);
-  pinMode(PIN_DATA, OUTPUT);  
+  pinMode(PIN_DATA, OUTPUT);
+  pinMode(PIN_TRANSISTOR, OUTPUT);  
 }
 
 void readTime() {
@@ -126,6 +128,8 @@ void refreshDisplay()
 
 void loop()
 {
+  analogWrite(PIN_TRANSISTOR, 255);
+  //digitalWrite(PIN_TRANSISTOR, HIGH);
   readTime();
   refreshDisplay(); // Must run repeatedly
   delay(100);
