@@ -183,14 +183,10 @@ void loop()
     auto data = IRLremote.read();
 
     if (data.command == BUTTON_MINUS) {
-      Serial.print("Brightness Level Down: ");
-      adjustBrightness(-BRIGHTNESS_STEP);
-      Serial.println(brightness);
+      buttonMinus();
     }
     else if (data.command == BUTTON_PLUS) {
-      Serial.print("Brightness Level Up: ");
-      adjustBrightness(BRIGHTNESS_STEP);
-      Serial.println(brightness);
+      buttonPlus();
     }
     else if (data.command == BUTTON_SET) {
       if (mode == MODE_NORMAL) {
@@ -268,3 +264,18 @@ void readDS3231time(byte *second, byte *minute, byte *hour, byte *dayOfWeek, byt
   *month = bcdToDec(Wire.read());
   *year = bcdToDec(Wire.read());
 }
+
+void buttonMinus()
+{
+  Serial.print("Brightness Level Down: ");
+  adjustBrightness(-BRIGHTNESS_STEP);
+  Serial.println(brightness);
+}
+
+void buttonPlus()
+{
+  Serial.print("Brightness Level Up: ");
+  adjustBrightness(BRIGHTNESS_STEP);
+  Serial.println(brightness);
+}
+
