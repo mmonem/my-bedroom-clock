@@ -257,16 +257,20 @@ void readDS3231time(byte *second, byte *minute, byte *hour, byte *dayOfWeek, byt
 
 void buttonMinus()
 {
-  Serial.print("Brightness Level Down: ");
-  adjustBrightness(-BRIGHTNESS_STEP);
-  Serial.println(brightness);
+  if (mode == MODE_NORMAL) {
+    Serial.print("Brightness Level Down: ");
+    adjustBrightness(-BRIGHTNESS_STEP);
+    Serial.println(brightness);
+  }
 }
 
 void buttonPlus()
 {
-  Serial.print("Brightness Level Up: ");
-  adjustBrightness(BRIGHTNESS_STEP);
-  Serial.println(brightness);
+  if (mode == MODE_NORMAL) {
+    Serial.print("Brightness Level Up: ");
+    adjustBrightness(BRIGHTNESS_STEP);
+    Serial.println(brightness);
+  }
 }
 
 void buttonSet()
