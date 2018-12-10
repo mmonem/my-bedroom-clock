@@ -8,6 +8,9 @@
 #define PIN_DATA  11
 #define PIN_TRANSISTOR  3
 #define PIN_IR 2
+#define BUTTON_MINUS 0x7
+#define BUTTON_PLUS 0x15
+#define BRIGHTNESS_STEP 16
 
 byte h1, h2, m1, m2;
 
@@ -15,6 +18,7 @@ byte h1, h2, m1, m2;
 int count = 0;
 
 CNec IRLremote;
+byte brightness = 255;
 
 
 void setup()
@@ -30,6 +34,12 @@ void setup()
   if (!IRLremote.begin(PIN_IR)) {
     Serial.println(F("You did not choose a valid pin."));
   }
+  setBrightness();
+}
+
+void setBrightness()
+{
+  analogWrite(PIN_TRANSISTOR, brightness);
 }
 
 void readTime() {
@@ -143,19 +153,32 @@ void loop()
     // Get the new data from the remote
     auto data = IRLremote.read();
 
-    // Print the protocol data
-    Serial.print(F("Address: 0x"));
-    Serial.println(data.address, HEX);
-    Serial.print(F("Command: 0x"));
-    Serial.println(data.command, HEX);
-    Serial.println();
+    if (data.command == BUTTON_MINUS) {
+      Serial.print("Brightness Level Down: ");
+      brightness -= BRIGHTNESS_STEP;
+      Serial.println(brightness);
+      setBrightness();
+    }
+    else if (data.command == BUTTON_PLUS) {
+      Serial.print("Brightness Level Up: ");
+      brightness += BRIGHTNESS_STEP;
+      Serial.println(brightness);
+      setBrightness();
+    }
+    else {
+      // Print the protocol data
+      Serial.print(F("Address: 0x"));
+      Serial.println(data.address, HEX);
+      Serial.print(F("Command: 0x"));
+      Serial.println(data.command, HEX);
+      Serial.println();
+    }
 
     // Turn Led off after printing the data
     digitalWrite(PIN_IR, LOW);
   }
   else
   {
-    analogWrite(PIN_TRANSISTOR, 255);
     //digitalWrite(PIN_TRANSISTOR, HIGH);
     readTime();
     refreshDisplay(); // Must run repeatedly
