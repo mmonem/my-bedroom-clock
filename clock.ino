@@ -189,17 +189,7 @@ void loop()
       buttonPlus();
     }
     else if (data.command == BUTTON_SET) {
-      if (mode == MODE_NORMAL) {
-        mode = MODE_SET_MINUTE;
-      }
-      else if (mode == MODE_SET_MINUTE) {
-        mode = MODE_SET_HOUR;
-      }
-      else if (mode == MODE_SET_HOUR) {
-        mode = MODE_NORMAL;
-      }
-      Serial.print("Setting mode: ");
-      Serial.println(mode);
+      buttonSet();
     }
     else {
       // Print the protocol data
@@ -277,5 +267,20 @@ void buttonPlus()
   Serial.print("Brightness Level Up: ");
   adjustBrightness(BRIGHTNESS_STEP);
   Serial.println(brightness);
+}
+
+void buttonSet()
+{
+  if (mode == MODE_NORMAL) {
+    mode = MODE_SET_MINUTE;
+  }
+  else if (mode == MODE_SET_MINUTE) {
+    mode = MODE_SET_HOUR;
+  }
+  else if (mode == MODE_SET_HOUR) {
+    mode = MODE_NORMAL;
+  }
+  Serial.print("Setting mode: ");
+  Serial.println(mode);  
 }
 
