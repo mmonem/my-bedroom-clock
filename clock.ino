@@ -154,6 +154,22 @@ void refreshDisplay()
     digitalWrite(PIN_LATCH, HIGH);
 }
 
+void adjustBrightness(int x)
+{
+  brightness += x;
+  setBrightness();
+}
+
+void adjustMinute(int x)
+{
+  
+}
+
+void adjustHour(int x)
+{
+  
+}
+
 void loop()
 {
   blink = (millis() % 1000) / 500;
@@ -168,15 +184,13 @@ void loop()
 
     if (data.command == BUTTON_MINUS) {
       Serial.print("Brightness Level Down: ");
-      brightness -= BRIGHTNESS_STEP;
+      adjustBrightness(-BRIGHTNESS_STEP);
       Serial.println(brightness);
-      setBrightness();
     }
     else if (data.command == BUTTON_PLUS) {
       Serial.print("Brightness Level Up: ");
-      brightness += BRIGHTNESS_STEP;
+      adjustBrightness(BRIGHTNESS_STEP);
       Serial.println(brightness);
-      setBrightness();
     }
     else if (data.command == BUTTON_SET) {
       if (mode == MODE_NORMAL) {
