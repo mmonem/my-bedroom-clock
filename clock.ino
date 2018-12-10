@@ -1,4 +1,4 @@
-//#include <LiquidCrystal.h>
+#include "IRLremote.h"
 #include "Wire.h"
 
 #define DS3231_I2C_ADDRESS 0x68
@@ -7,12 +7,15 @@
 #define PIN_CLOCK 12
 #define PIN_DATA  11
 #define PIN_TRANSISTOR  3
-
+#define PIN_IR 2
 
 byte h1, h2, m1, m2;
 
 // loop counter
 int count = 0;
+
+CNec IRLremote;
+
 
 void setup()
 {
@@ -23,6 +26,10 @@ void setup()
   pinMode(PIN_CLOCK, OUTPUT);
   pinMode(PIN_DATA, OUTPUT);
   pinMode(PIN_TRANSISTOR, OUTPUT);  
+  pinMode(PIN_IR, OUTPUT);
+  if (!IRLremote.begin(PIN_IR)) {
+    Serial.println(F("You did not choose a valid pin."));
+  }
 }
 
 void readTime() {
@@ -128,11 +135,32 @@ void refreshDisplay()
 
 void loop()
 {
-  analogWrite(PIN_TRANSISTOR, 255);
-  //digitalWrite(PIN_TRANSISTOR, HIGH);
-  readTime();
-  refreshDisplay(); // Must run repeatedly
-  delay(100);
+  if (IRLremote.available())
+  {
+    // Light Led
+    digitalWrite(PIN_IR, HIGH);
+
+    // Get the new data from the remote
+    auto data = IRLremote.read();
+
+    // Print the protocol data
+    Serial.print(F("Address: 0x"));
+    Serial.println(data.address, HEX);
+    Serial.print(F("Command: 0x"));
+    Serial.println(data.command, HEX);
+    Serial.println();
+
+    // Turn Led off after printing the data
+    digitalWrite(PIN_IR, LOW);
+  }
+  else
+  {
+    analogWrite(PIN_TRANSISTOR, 255);
+    //digitalWrite(PIN_TRANSISTOR, HIGH);
+    readTime();
+    refreshDisplay(); // Must run repeatedly
+    delay(100);
+  }
 }
 
 // Convert normal decimal numbers to binary coded decimal
