@@ -8,14 +8,24 @@
 #define PIN_DATA  11
 #define PIN_TRANSISTOR  3
 #define PIN_IR 2
+
 #define BUTTON_MINUS 0x7
 #define BUTTON_PLUS 0x15
+#define BUTTON_SET 0x9
+
 #define BRIGHTNESS_STEP 16
+
+#define MODE_NORMAL 1
+#define MODE_SET_HOUR 100
+#define MODE_SET_MINUTE 101
 
 byte h1, h2, m1, m2;
 
 // loop counter
 int count = 0;
+
+byte mode;
+byte blink = 0;
 
 CNec IRLremote;
 byte brightness = 255;
@@ -23,6 +33,7 @@ byte brightness = 255;
 
 void setup()
 {
+  mode = MODE_NORMAL;
   Serial.begin(9600);
   Wire.begin();
   // setDS3231time(10,54,22,5,9,11,17);
@@ -107,34 +118,34 @@ void refreshDisplay()
    * +-----------------+-----------------+-----------------+
    */
   byte b1 = 
-      a(m2) << 0
-    | b(m2) << 1
-    | c(m2) << 2
-    | d(m2) << 3
-    | e(m2) << 4
-    | f(m2) << 5
-    | g(m2) << 6
-    | a(m1) << 7;
+      (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (a(m2) << 0))
+    | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (b(m2) << 1))
+    | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (c(m2) << 2))
+    | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (d(m2) << 3))
+    | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (e(m2) << 4))
+    | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (f(m2) << 5))
+    | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (g(m2) << 6))
+    | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (a(m1) << 7));
     
   byte b2 = 
-      b(m1) << 0
-    | c(m1) << 1
-    | d(m1) << 2
-    | e(m1) << 3
-    | f(m1) << 4
-    | g(m1) << 5
-    | a(h2) << 6
-    | b(h2) << 7;
+      (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (b(m1) << 0))
+    | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (c(m1) << 1))
+    | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (d(m1) << 2))
+    | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (e(m1) << 3))
+    | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (f(m1) << 4))
+    | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (g(m1) << 5))
+    | (mode == MODE_SET_HOUR && blink == 0 ? 0 : (a(h2) << 6))
+    | (mode == MODE_SET_HOUR && blink == 0 ? 0 : (b(h2) << 7));
     
   byte b3 = 
-      c(h2) << 0
-    | d(h2) << 1
-    | e(h2) << 2
-    | f(h2) << 3
-    | g(h2) << 4
-    | (h1 ? 1  << 5 : 0)
-    | (h1 ? 1  << 6 : 0)
-    | 0     << 7;
+      (mode == MODE_SET_HOUR && blink == 0 ? 0 : (c(h2) << 0))
+    | (mode == MODE_SET_HOUR && blink == 0 ? 0 : (d(h2) << 1))
+    | (mode == MODE_SET_HOUR && blink == 0 ? 0 : (e(h2) << 2))
+    | (mode == MODE_SET_HOUR && blink == 0 ? 0 : (f(h2) << 3))
+    | (mode == MODE_SET_HOUR && blink == 0 ? 0 : (g(h2) << 4))
+    | (mode == MODE_SET_HOUR && blink == 0 ? 0 : ((h1 ? 1  << 5 : 0)))
+    | (mode == MODE_SET_HOUR && blink == 0 ? 0 : ((h1 ? 1  << 6 : 0)))
+    | (0     << 7);
 
     digitalWrite(PIN_LATCH, LOW);
     shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~b3);  
@@ -145,6 +156,8 @@ void refreshDisplay()
 
 void loop()
 {
+  blink = (millis() % 1000) / 500;
+  
   if (IRLremote.available())
   {
     // Light Led
@@ -164,6 +177,19 @@ void loop()
       brightness += BRIGHTNESS_STEP;
       Serial.println(brightness);
       setBrightness();
+    }
+    else if (data.command == BUTTON_SET) {
+      if (mode == MODE_NORMAL) {
+        mode = MODE_SET_MINUTE;
+      }
+      else if (mode == MODE_SET_MINUTE) {
+        mode = MODE_SET_HOUR;
+      }
+      else if (mode == MODE_SET_HOUR) {
+        mode = MODE_NORMAL;
+      }
+      Serial.print("Setting mode: ");
+      Serial.println(mode);
     }
     else {
       // Print the protocol data
