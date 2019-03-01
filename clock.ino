@@ -13,7 +13,19 @@
 #define BUTTON_PLUS 0x15
 #define BUTTON_SET 0x9
 
-#define BRIGHTNESS_STEP 5
+#define BRIGHTNESS_STEP 1
+
+// infrared commands
+#define _0 0x16
+#define _1 0xc
+#define _2 0x18
+#define _3 0x5E
+#define _4 0x8
+#define _5 0x1C
+#define _6 0x5A
+#define _7 0x42
+#define _8 0x52
+#define _9 0x4A
 
 #define MODE_NORMAL 1
 #define MODE_SET_HOUR 100
@@ -190,6 +202,46 @@ void loop()
     }
     else if (data.command == BUTTON_SET) {
       buttonSet();
+    }
+    else if (data.command == _0) {
+      brightness = 0;
+      setBrightness();
+    }
+    else if (data.command == _1) {
+      brightness = 1;
+      setBrightness();
+    }
+    else if (data.command == _2) {
+      brightness = 2;
+      setBrightness();
+    }
+    else if (data.command == _3) {
+      brightness = 4;
+      setBrightness();
+    }
+    else if (data.command == _4) {
+      brightness = 8;
+      setBrightness();
+    }
+    else if (data.command == _5) {
+      brightness = 16;
+      setBrightness();
+    }
+    else if (data.command == _6) {
+      brightness = 32;
+      setBrightness();
+    }
+    else if (data.command == _7) {
+      brightness = 64;
+      setBrightness();
+    }
+    else if (data.command == _8) {
+      brightness = 128;
+      setBrightness();
+    }
+    else if (data.command == _9) {
+      brightness = 255;
+      setBrightness();
     }
     else {
       // Print the protocol data
