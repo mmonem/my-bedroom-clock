@@ -13,7 +13,7 @@
 #define BUTTON_PLUS 0x15
 #define BUTTON_SET 0x9
 
-#define BRIGHTNESS_STEP 16
+#define BRIGHTNESS_STEP 5
 
 #define MODE_NORMAL 1
 #define MODE_SET_HOUR 100
@@ -28,7 +28,7 @@ byte mode;
 byte blink = 0;
 
 CNec IRLremote;
-byte brightness = 255;
+byte brightness = 126;
 
 
 void setup()
