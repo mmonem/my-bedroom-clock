@@ -8,6 +8,7 @@
 #define PIN_DATA  11
 #define PIN_TRANSISTOR  3
 #define PIN_IR 2
+#define PIN_PHOTOCELL A2
 
 #define BUTTON_MINUS 0x7
 #define BUTTON_PLUS 0x15
@@ -48,7 +49,7 @@ void setup()
   mode = MODE_NORMAL;
   Serial.begin(9600);
   Wire.begin();
-  // setDS3231time(10,54,22,5,9,11,17);
+  //setDS3231time(0,45,14,1,2,6,19);
   pinMode(PIN_LATCH, OUTPUT);
   pinMode(PIN_CLOCK, OUTPUT);
   pinMode(PIN_DATA, OUTPUT);
@@ -185,11 +186,25 @@ void adjustHour(int x)
 void loop()
 {
   blink = (millis() % 1000) / 500;
-  
+  autoAdjust();
+  //recieveInfrared();
+  //digitalWrite(PIN_TRANSISTOR, HIGH);
+  readTime();
+  refreshDisplay(); // Must run repeatedly
+  delay(10);
+}
+
+
+void autoAdjust(){
+  brightness = analogRead(PIN_PHOTOCELL)/4-12;
+  setBrightness();
+  Serial.println(brightness);
+}
+void recieveInfrared(){
   if (IRLremote.available())
   {
     // Light Led
-    digitalWrite(PIN_IR, HIGH);
+    //digitalWrite(PIN_IR, HIGH);
 
     // Get the new data from the remote
     auto data = IRLremote.read();
@@ -253,16 +268,9 @@ void loop()
     }
 
     // Turn Led off after printing the data
-    digitalWrite(PIN_IR, LOW);
+    //digitalWrite(PIN_IR, LOW);
   }
-  else
-  {
-    //digitalWrite(PIN_TRANSISTOR, HIGH);
-    readTime();
-    refreshDisplay(); // Must run repeatedly
-    delay(100);
-  }
-}
+} 
 
 // Convert normal decimal numbers to binary coded decimal
 byte decToBcd(byte val)
