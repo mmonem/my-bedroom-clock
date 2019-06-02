@@ -37,6 +37,7 @@ byte h1, h2, m1, m2;
 // loop counter
 int count = 0;
 
+int raw_brightness;
 byte mode;
 byte blink = 0;
 
@@ -196,7 +197,9 @@ void loop()
 
 
 void autoAdjust(){
-  brightness = analogRead(PIN_PHOTOCELL)/4-12;
+  
+  raw_brightness = analogRead(PIN_PHOTOCELL)/4-12;
+  brightness = max(raw_brightness, 1);
   setBrightness();
   Serial.println(brightness);
 }
