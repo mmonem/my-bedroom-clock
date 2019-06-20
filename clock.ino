@@ -15,6 +15,8 @@
 #define BUTTON_SET 0x9
 
 #define BRIGHTNESS_STEP 1
+#define BRIGHTNESS_SAMPESLS 100
+#define BRIGHTNESS_SAMP_TIME 10 
 
 // infrared commands
 #define _0 0x16
@@ -39,9 +41,8 @@ byte h1, h2, m1, m2;
 // loop counter
 int count = 0;
 
-int values[100];
+int brightness_values[BRIGHTNESS_SAMPESLS];
 
-int raw_brightness;
 byte mode;
 byte blink = 0;
 
@@ -201,16 +202,16 @@ void loop()
 
 
 void autoAdjust(){
-  for(int i =0; i<=100;i++){
-    values[i] = analogRead(PIN_PHOTOCELL)/4+INCREASE_DECREASE_FACTOR;
-    delay(10);
+  for(int i =0; i<=BRIGHTNESS_SAMPESLS;i++){
+    brightness_values[i] = analogRead(PIN_PHOTOCELL)/4+INCREASE_DECREASE_FACTOR;
+    delay(BRIGHTNESS_SAMP_TIME);
   }  
   int s = 0;
   for (int i=0; i< 100; i++)
   {
-      s += values[i];
+      s += brightness_values[i];
   }
-  int avarege = s/100;
+  int avarege = s/BRIGHTNESS_SAMPESLS;
   brightness = max(avarege, 1);
   setBrightness();
   Serial.println(brightness);
