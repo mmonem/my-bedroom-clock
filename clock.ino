@@ -32,10 +32,14 @@
 #define MODE_SET_HOUR 100
 #define MODE_SET_MINUTE 101
 
+#define INCREASE_DECREASE_FACTOR -25
+
 byte h1, h2, m1, m2;
 
 // loop counter
 int count = 0;
+
+int values[100];
 
 int raw_brightness;
 byte mode;
@@ -50,12 +54,12 @@ void setup()
   mode = MODE_NORMAL;
   Serial.begin(9600);
   Wire.begin();
-  //setDS3231time(0,45,14,1,2,6,19);
+  //setDS3231time(0,41,21,1,20,6,19);
   pinMode(PIN_LATCH, OUTPUT);
   pinMode(PIN_CLOCK, OUTPUT);
   pinMode(PIN_DATA, OUTPUT);
   pinMode(PIN_TRANSISTOR, OUTPUT);  
-  pinMode(PIN_IR, OUTPUT);
+  //pinMode(PIN_IR, OUTPUT);
   if (!IRLremote.begin(PIN_IR)) {
     Serial.println(F("You did not choose a valid pin."));
   }
@@ -170,7 +174,7 @@ void refreshDisplay()
 
 void adjustBrightness(int x)
 {
-  brightness += x;
+  brightness = x;
   setBrightness();
 }
 
@@ -197,9 +201,17 @@ void loop()
 
 
 void autoAdjust(){
-  
-  raw_brightness = analogRead(PIN_PHOTOCELL)/4-12;
-  brightness = max(raw_brightness, 1);
+  for(int i =0; i<=100;i++){
+    values[i] = analogRead(PIN_PHOTOCELL)/4+INCREASE_DECREASE_FACTOR;
+    delay(10);
+  }  
+  int s = 0;
+  for (int i=0; i< 100; i++)
+  {
+      s += values[i];
+  }
+  int avarege = s/100;
+  brightness = max(avarege, 1);
   setBrightness();
   Serial.println(brightness);
 }
