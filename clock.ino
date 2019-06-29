@@ -1,3 +1,4 @@
+//#include <LiquidCrystal_I2C.h>
 #include "IRLremote.h"
 #include "Wire.h"
 
@@ -34,7 +35,7 @@
 #define MODE_SET_HOUR 100
 #define MODE_SET_MINUTE 101
 
-#define INCREASE_DECREASE_FACTOR -25
+//#define INCREASE_DECREASE_FACTOR -25
 
 byte h1, h2, m1, m2;
 
@@ -46,6 +47,9 @@ int brightness_values[BRIGHTNESS_SAMPESLS];
 byte mode;
 byte blink = 0;
 
+// Set the LCD address to 0x27 for a 16 chars and 2 line display
+//LiquidCrystal_I2C lcd(0x27, 16, 2);
+
 CNec IRLremote;
 byte brightness = 126;
 
@@ -56,6 +60,12 @@ void setup()
   Serial.begin(9600);
   Wire.begin();
   //setDS3231time(0,41,21,1,20,6,19);
+  // initialize the LCD
+//  lcd.begin();
+
+  // Turn on the blacklight and print a message.
+//  lcd.backlight();
+  
   pinMode(PIN_LATCH, OUTPUT);
   pinMode(PIN_CLOCK, OUTPUT);
   pinMode(PIN_DATA, OUTPUT);
@@ -202,10 +212,10 @@ void loop()
 
 
 void autoAdjust(){
-  for(int i =0; i<=BRIGHTNESS_SAMPESLS;i++){
+  /*for(int i =0; i<=BRIGHTNESS_SAMPESLS;i++){
     brightness_values[i] = analogRead(PIN_PHOTOCELL)/4+INCREASE_DECREASE_FACTOR;
     delay(BRIGHTNESS_SAMP_TIME);
-  }  
+  } 
   int s = 0;
   for (int i=0; i< 100; i++)
   {
@@ -213,8 +223,13 @@ void autoAdjust(){
   }
   int avarege = s/BRIGHTNESS_SAMPESLS;
   brightness = max(avarege, 1);
+  lcd.clear();
+  lcd.print(analogRead(PIN_PHOTOCELL));
   setBrightness();
   Serial.println(brightness);
+  */
+  brightness = analogRead(PIN_PHOTOCELL)/4;
+  setBrightness();
 }
 void recieveInfrared(){
   if (IRLremote.available())
