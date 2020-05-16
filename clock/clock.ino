@@ -1,6 +1,8 @@
 //#include <LiquidCrystal_I2C.h>
 #include "IRLremote.h"
 #include "Wire.h"
+#include <SoftwareSerial.h>
+
 
 #define DS3231_I2C_ADDRESS 0x68
 
@@ -9,7 +11,7 @@
 #define PIN_DATA  11
 #define PIN_TRANSISTOR  3
 #define PIN_IR 2
-#define PIN_PHOTOCELL A2
+#define PIN_PHOTOCELL A1
 
 #define BUTTON_MINUS 0x7
 #define BUTTON_PLUS 0x15
@@ -51,6 +53,8 @@ byte blink = 0;
 //LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 CNec IRLremote;
+SoftwareSerial ESPserial(PD5, PD6); // RX | TX
+
 byte brightness = 126;
 
 
@@ -58,6 +62,7 @@ void setup()
 {
   mode = MODE_NORMAL;
   Serial.begin(9600);
+  ESPserial.begin(115200);  
   Wire.begin();
   //setDS3231time(0,41,21,1,20,6,19);
   // initialize the LCD
@@ -75,6 +80,7 @@ void setup()
     Serial.println(F("You did not choose a valid pin."));
   }
   setBrightness();
+  delay(5000);
 }
 
 void setBrightness()
@@ -205,6 +211,7 @@ void loop()
   autoAdjust();
   //recieveInfrared();
   //digitalWrite(PIN_TRANSISTOR, HIGH);
+  updateTimeNTP();
   readTime();
   refreshDisplay(); // Must run repeatedly
   delay(10);
@@ -231,6 +238,8 @@ void autoAdjust(){
   brightness = analogRead(PIN_PHOTOCELL)/4;
   setBrightness();
 }
+
+
 void recieveInfrared(){
   if (IRLremote.available())
   {
@@ -379,3 +388,29 @@ void buttonSet()
   Serial.println(mode);  
 }
 
+void updateTimeNTP(){
+  if(ESPserial.available()) {
+      String readString;
+      while (ESPserial.available()) {
+          delay(1);
+          if (ESPserial.available() >0) {
+              char c = ESPserial.read();
+              readString += c;
+          }
+      }
+      unsigned long time = readString.toInt();
+      // print the hour, minute and second:
+      int hr=(time  % 86400L) / 3600;
+      int min=(time % 3600) / 60;
+      int sec=(time % 60);
+    
+      Wire.beginTransmission(DS3231_I2C_ADDRESS);
+      Wire.write(0); // set next input to start at the seconds register
+      Wire.write(decToBcd(sec)); // set seconds
+      Wire.write(decToBcd(min)); // set minutes
+      Wire.write(decToBcd(hr)); // set hours
+      Wire.endTransmission();
+
+      ESPserial.write(0x55);
+  }
+}
