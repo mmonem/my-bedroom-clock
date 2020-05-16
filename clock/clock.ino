@@ -62,7 +62,7 @@ void setup()
 {
   mode = MODE_NORMAL;
   Serial.begin(9600);
-  ESPserial.begin(115200);  
+  ESPserial.begin(9600);  
   Wire.begin();
   //setDS3231time(0,41,21,1,20,6,19);
   // initialize the LCD
@@ -80,7 +80,6 @@ void setup()
     Serial.println(F("You did not choose a valid pin."));
   }
   setBrightness();
-  delay(5000);
 }
 
 void setBrightness()
@@ -393,12 +392,61 @@ void updateTimeNTP(){
       String readString;
       while (ESPserial.available()) {
           delay(1);
-          if (ESPserial.available() >0) {
+          if (ESPserial.available() > 0) {
               char c = ESPserial.read();
               readString += c;
           }
       }
-      unsigned long time = readString.toInt();
+
+      
+      if (validTimeString(readString)) {
+        setTime(readString.substring(0, 10));
+      }
+  }
+}
+
+bool validTimeString(String timeStringWithChecksum) {
+  int len = timeStringWithChecksum.length();
+  if (len < 11 || len > 13)
+      return false;
+
+  String timeString = timeStringWithChecksum.substring(0, 10);
+  String checkSumStr = timeStringWithChecksum.substring(10);
+  
+  //Serial.print(timeStringWithChecksum);
+  //Serial.print(" --> ");
+  //Serial.print(timeString);
+  //Serial.print(" : ");
+  //Serial.print(checkSumStr);
+  //Serial.print(" ==>");
+  
+  String computedChecksum = checksum(timeString);
+  computedChecksum += "\r\n";
+  
+  //Serial.print(computedChecksum);
+  
+  if (computedChecksum != checkSumStr){
+      //Serial.println("Noooooo");
+      return false;
+      }
+  else{
+     // Serial.println("True");
+      return true;
+  }
+}
+
+String checksum(String s) {
+    byte c = 0;
+    for (int i = 0; i < s.length(); i++) {
+        c ^= s[i];
+    }
+    return String(c);
+}
+
+
+void setTime(String timeString) {
+      unsigned long time = timeString.toInt();
+      //Serial.println(time);
       // print the hour, minute and second:
       int hr=(time  % 86400L) / 3600;
       int min=(time % 3600) / 60;
@@ -409,8 +457,5 @@ void updateTimeNTP(){
       Wire.write(decToBcd(sec)); // set seconds
       Wire.write(decToBcd(min)); // set minutes
       Wire.write(decToBcd(hr)); // set hours
-      Wire.endTransmission();
-
-      ESPserial.write(0x55);
-  }
+      Wire.endTransmission();  
 }

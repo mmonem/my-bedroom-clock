@@ -17,13 +17,16 @@
 const char *ssid     = "Monem";
 const char *password = "5531-6111-2017-0801-3560";
 
+// Constants
+const int INTERVAL = 2*60*60; //seconds
+
 // Define NTP Client to get time
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 void setup() {
   // Initialize Serial Monitor
-  Serial.begin(115200);
+  Serial.begin(9600);
   
   // Connect to Wi-Fi
   WiFi.begin(ssid, password);
@@ -31,27 +34,26 @@ void setup() {
   //Initialize a NTPClient to get time
   timeClient.begin();
   timeClient.setTimeOffset(7200);
+
+  delay(5000);
 }
 
 unsigned long epochTime;
-bool debug = true;
+
+String checksum(String s) {
+    byte c = 0;
+    for (int i = 0; i < s.length(); i++) {
+        c ^= s[i];
+    }
+    return String(c);
+}
 
 void loop() {
-  if(debug){
+  
     timeClient.update();
     epochTime = timeClient.getEpochTime();
-    Serial.println(epochTime);
-    delay(1000);
-  }
-  else{
-    timeClient.update();
-    epochTime = timeClient.getEpochTime();
-    Serial.println(epochTime);
-    delay(7200000);
-  }
-
-  if(Serial.available() > 0){
-    if(Serial.read() == 0x55)
-      debug = false;    
-  }
+    String timeStr = String(epochTime);
+    Serial.print(epochTime);
+    Serial.println(checksum(timeStr));
+    delay(INTERVAL*1000);
 }
