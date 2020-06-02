@@ -21,9 +21,10 @@
 #define PIN_PHOTOCELL A1
 
 // Generic casette remote control codes
-#define BUTTON_MINUS 0x40
-#define BUTTON_PLUS 0x44
-#define BUTTON_SET 0x9
+#define BUTTON_MINUS 0x15
+#define BUTTON_PLUS 0x9
+#define BUTTON_SET 0x19
+#define BUTTON_RESET 0x45
 #define BUTTON_0 0x16
 #define BUTTON_1 0xc
 #define BUTTON_2 0x18
@@ -62,10 +63,13 @@ int police_change = 0;
 int sensor_value;
 byte sensor_mapping[1024];
 bool stop_sensor = false;
-byte trueValueaddress = 1;
+int trueValueaddress = 1;
+bool save = false;
 
 CNec IRLremote;
 SoftwareSerial ESPserial(PD5, PD6); // RX | TX
+
+int values[10] = {1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024};
 
 void setup()
 {
@@ -83,34 +87,77 @@ void setup()
   if (!IRLremote.begin(PIN_IR)) {
     Serial.println(F("You did not choose a valid pin."));
   }
-
+  
   refreshSensorMapping();
+ 
   //setSensorMapping();
-  setBrightness(brightness);
 
-  dumpMapping();
+  //dumpMapping();
+  //goYaBrain();
+
+  setBrightness(brightness);
 }
 
 void refreshSensorMapping() {
   for (int i = 0; i <= 1023; i++) {
     sensor_mapping[i] = EEPROM.read(i);
   }
-}
 
-int values[10] = {1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024};
+  sensor_mapping[0] = 0;
+  
+//  sensor_mapping[128] = 120;
+//  sensor_mapping[256] = 1;
+//  sensor_mapping[512] = 120;
+//  sensor_mapping[720] = 1;
+  
+  
+  sensor_mapping[1023] = 255;
+
+  values[0] = 0;
+//  values[1] = 128;
+//  values[2] = 256;
+//  values[3] = 512;
+//  values[4] = 720;
+  values[9] = 1023;
+
+}
 
 void setSensorMapping() {
   for (int i = 0; i <= 1023; i++) {
     sensor_mapping[i] = 0;
   }
 
-  sensor_mapping[0] = 1;
+  sensor_mapping[0] = 0;
+  
+//  sensor_mapping[128] = 120;
+//  sensor_mapping[256] = 1;
+//  sensor_mapping[512] = 120;
+//  sensor_mapping[720] = 1;
+  
+  
   sensor_mapping[1023] = 255;
 
   values[0] = 0;
+//  values[1] = 128;
+//  values[2] = 256;
+//  values[3] = 512;
+//  values[4] = 720;
   values[9] = 1023;
 
+  //getPoints();
   goYaBrain();
+}
+
+void getPoints(){
+  byte valid_address_counter = 0;
+  for (int i = 0; i < 10; i++) {
+    if (values[i] >= 0 && values[i] <= 1023) {
+      valid_address_counter += 1;
+      Serial.print(values[i]);
+      Serial.print(" ");
+      Serial.println(sensor_mapping[values[i]]);
+    }
+  }  
 }
 
 void saveTo3amoEEPROM(){
@@ -120,15 +167,12 @@ void saveTo3amoEEPROM(){
 }
 
 void goYaBrain() {
-
   byte valid_address_counter = 0;
   for (int i = 0; i < 10; i++) {
-
     if (values[i] >= 0 && values[i] <= 1023) {
       valid_address_counter += 1;
       Serial.println(values[i]);
     }
-
   }
 
   Serial.println(valid_address_counter);
@@ -136,6 +180,7 @@ void goYaBrain() {
   if(valid_address_counter == 2){
     doTheMagic(values[0], values[9]);
   }
+  
   else if(valid_address_counter/* 4 */ > 2){
     for(int i = 0;i</*2*/valid_address_counter-2;i++){
       doTheMagic(values[i/* 1 */], values[i+1/*2*/]);
@@ -143,10 +188,6 @@ void goYaBrain() {
     
     doTheMagic(values[valid_address_counter-2], values[9]);
   }
-
-  //dumpMapping();
-  
-  saveTo3amoEEPROM();
 }
 
 void doTheMagic(int addr_1, int addr_2) {
@@ -175,6 +216,7 @@ void dumpMapping() {
   for (int i = 0; i <= 1023; i++) {
     Serial.println(sensor_mapping[i]);
   }
+  getPoints();
 }
 
 void setBrightness(byte value)
@@ -307,11 +349,20 @@ void loop()
 }
 
 void updateTransistor() {
-  adjustTransistor(EEPROM.read(sensor_value));
+  adjustTransistor(sensor_mapping[sensor_value]);
 }
 
 void getSensorValue() {
-  sensor_value = analogRead(PIN_PHOTOCELL);
+   int buffer[32];
+   int total = 0;
+    for(int i =0;i<32;i+=1){
+      buffer[i] = analogRead(PIN_PHOTOCELL);   
+      delay(2);
+    }
+  for(int i =0;i<32;i+=1){
+      total += buffer[i];
+    }
+  sensor_value = total/32;
 }
 
 void adjustTransistor(int value) {
@@ -321,12 +372,59 @@ void adjustTransistor(int value) {
 
 void sensorPolice() {
   if (police_time + 5000 < millis()) {
-    stop_sensor = false;
+    stop_sensor = false; 
+  }
+  
+  if(save)
+  {
+    
     sensor_mapping[police_address] += police_change;
     values[trueValueaddress] = police_address;
     trueValueaddress += 1;
-    goYaBrain();
+    Serial.println(values[trueValueaddress]);
+    
+    goYaBrain();  
+    stop_sensor = false;
+    saveTo3amoEEPROM();
+    save = false;
+    
+    digitalWrite(PIN_LATCH, LOW);
+    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~B11111111);
+    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~B11111111);
+    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~B11111000);
+    digitalWrite(PIN_LATCH, HIGH);
+
+    delay(2000);
+    
   }
+}
+
+void clear(){
+  for (int i = 0; i <= 1023; i++) {
+    sensor_mapping[i] = 0;
+  }
+  for (int i = 0; i <= 9; i++) {
+    values[i] = 1024;
+  }
+   sensor_mapping[0] = 0;
+  
+//  sensor_mapping[128] = 120;
+//  sensor_mapping[256] = 1;
+//  sensor_mapping[512] = 120;
+//  sensor_mapping[720] = 1;
+  
+  
+  sensor_mapping[1023] = 255;
+
+  values[0] = 0;
+//  values[1] = 128;
+//  values[2] = 256;
+//  values[3] = 512;
+//  values[4] = 720;
+  values[9] = 1023;
+
+  //getPoints();
+  goYaBrain(); 
 }
 
 void userIncreaseBrightness(unsigned long time) {
@@ -336,7 +434,7 @@ void userIncreaseBrightness(unsigned long time) {
 
   police_time = time;
   police_address = sensor_value;
-  police_change += 1;
+  police_change += 10;
 
   byte real_value = sensor_mapping[sensor_value];
   setBrightness(real_value + police_change);
@@ -349,7 +447,7 @@ void userDecreaseBrightness(unsigned long time) {
 
   police_time = time;
   police_address = sensor_value;
-  police_change -= 1;
+  police_change -= 10;
 
   byte real_value = sensor_mapping[sensor_value];
   setBrightness(real_value + police_change);
@@ -371,11 +469,21 @@ void recieveInfrared() {
 
     if (data.address == 0xFF00 /* To prevent recieving 0, look at note above */) {
       switch (data.command) {
-        case BUTTON_MINUS:
+        case BUTTON_PLUS:
           userIncreaseBrightness(millis());
           break;
-        case BUTTON_PLUS:
+        case BUTTON_MINUS:
           userDecreaseBrightness(millis());
+          break;
+        case BUTTON_SET:
+          save = true;
+          break;
+        case BUTTON_RESET:
+          clear();
+          saveTo3amoEEPROM();
+          break;
+        case 0x47:
+          dumpMapping();
           break;
       }
       Serial.print(F("Address: 0x"));
