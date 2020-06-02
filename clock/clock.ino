@@ -8,6 +8,7 @@
 
 // Libraries used - might differ when using CMake
 #include <SoftwareSerial.h>
+#include <EEPROM.h>
 #include "IRLremote.h"
 #include "Wire.h"
 
@@ -20,8 +21,8 @@
 #define PIN_PHOTOCELL A1
 
 // Generic casette remote control codes
-#define BUTTON_MINUS 0x7
-#define BUTTON_PLUS 0x15
+#define BUTTON_MINUS 0x44
+#define BUTTON_PLUS 0x40
 #define BUTTON_SET 0x9
 #define BUTTON_0 0x16
 #define BUTTON_1 0xc
@@ -54,6 +55,14 @@ byte mode;
 byte blink = 0;
 byte brightness = 126;
 
+unsigned long police_time;
+int police_address;
+int police_change = 0;
+
+int sensor_value;
+byte sensor_mapping[1024];
+bool stop_sensor = false;
+
 CNec IRLremote;
 SoftwareSerial ESPserial(PD5, PD6); // RX | TX
 
@@ -74,12 +83,74 @@ void setup()
     Serial.println(F("You did not choose a valid pin."));
   }
 
-  setBrightness();
+  //refreshSensorMapping();
+  setSensorMapping();
+  setBrightness(brightness);
 }
 
-void setBrightness()
+void refreshSensorMapping(){
+  for(int i =0;i<=1023;i++){
+    sensor_mapping[i] = EEPROM.read(i);  
+  }  
+}
+
+int values[10] = {1024,1024,1024,1024,1024,1024,1024,1024,1024,1024};
+void setSensorMapping(){
+  for(int i =0;i<=1023;i++){sensor_mapping[i]=0;}
+  
+  sensor_mapping[0] = 1;
+  sensor_mapping[1023] = 255;
+
+  values[0] = 0;
+  values[9] = 1023;
+  
+  goYaBrain(values);
+}
+
+void goYaBrain(int* collected){
+
+byte valid_address_counter = 0;
+for(int i =0;i<10;i++){
+  
+  if(collected[i] >= 0 && collected[i]<=1023){
+    valid_address_counter+=1;    
+    Serial.println(collected[i]);
+  }
+  
+}
+
+Serial.println(valid_address_counter);
+
+
+switch (valid_address_counter){
+  case 2:
+  
+    int address_1 = values[0];
+    int address_2 = values[9];
+    int number = address_2-address_1;
+    int diffrence = sensor_mapping[address_2]-sensor_mapping[address_1];
+    float change = (float)diffrence/(float)number;
+    Serial.println(change);
+    for(int i = address_1;i<=number;i++){
+      sensor_mapping[i] = 1 + round(change*i);
+    }
+    
+   
+    break;  
+}
+
+dumpMapping();
+}
+
+void dumpMapping(){
+  for(int i =0;i<=1023;i++){
+    Serial.println(sensor_mapping[i]);
+  }  
+}
+
+void setBrightness(byte value)
 {
-  analogWrite(PIN_TRANSISTOR, brightness);
+  analogWrite(PIN_TRANSISTOR, value);
 }
 
 void readTime() {
@@ -184,104 +255,106 @@ void refreshDisplay()
   digitalWrite(PIN_LATCH, HIGH);
 }
 
-void adjustBrightness(int x)
-{
-  brightness = x;
-  setBrightness();
-}
 
 void loop()
 {
   blink = (millis() % 1000) / 500;
 
-  autoAdjust();
-  //recieveInfrared();
+  //autoAdjust();
+  if(!stop_sensor){
+    getSensorValue();
+    updateTransistor();
+  }else{
+    sensorPolice();
+  }
+  
+  recieveInfrared();
 
   updateTimeNTP();
   readTime();
   refreshDisplay(); // Must run repeatedly
-
+  //dumpMapping();
   delay(10);
 }
 
-
-void autoAdjust() {
-  brightness = analogRead(PIN_PHOTOCELL) / 4;
-  setBrightness();
+void updateTransistor(){
+  adjustTransistor(EEPROM.read(sensor_value));
 }
 
+void getSensorValue(){
+  sensor_value = analogRead(PIN_PHOTOCELL);
+}
 
-//void recieveInfrared(){
-//  if (IRLremote.available())
-//  {
-//    // Light Led
-//    //digitalWrite(PIN_IR, HIGH);
-//
-//    // Get the new data from the remote
-//    auto data = IRLremote.read();
-//
-//    if (data.command == BUTTON_MINUS) {
-//      buttonMinus();
-//    }
-//    else if (data.command == BUTTON_PLUS) {
-//      buttonPlus();
-//    }
-//    else if (data.command == BUTTON_SET) {
-//      buttonSet();
-//    }
-//    else if (data.command == _0) {
-//      brightness = 0;
-//      setBrightness();
-//    }
-//    else if (data.command == _1) {
-//      brightness = 1;
-//      setBrightness();
-//    }
-//    else if (data.command == _2) {
-//      brightness = 2;
-//      setBrightness();
-//    }
-//    else if (data.command == _3) {
-//      brightness = 4;
-//      setBrightness();
-//    }
-//    else if (data.command == _4) {
-//      brightness = 8;
-//      setBrightness();
-//    }
-//    else if (data.command == _5) {
-//      brightness = 16;
-//      setBrightness();
-//    }
-//    else if (data.command == _6) {
-//      brightness = 32;
-//      setBrightness();
-//    }
-//    else if (data.command == _7) {
-//      brightness = 64;
-//      setBrightness();
-//    }
-//    else if (data.command == _8) {
-//      brightness = 128;
-//      setBrightness();
-//    }
-//    else if (data.command == _9) {
-//      brightness = 255;
-//      setBrightness();
-//    }
-//    else {
-//      // Print the protocol data
-//      Serial.print(F("Address: 0x"));
-//      Serial.println(data.address, HEX);
-//      Serial.print(F("Command: 0x"));
-//      Serial.println(data.command, HEX);
-//      Serial.println();
-//    }
-//
-//    // Turn Led off after printing the data
-//    //digitalWrite(PIN_IR, LOW);
-//  }
-//}
+void adjustTransistor(int value) {
+  byte real_value = sensor_mapping[sensor_value];
+  setBrightness(real_value);
+}
+
+void sensorPolice(){
+  if(police_time + 5000 < millis()){
+    stop_sensor = false;
+    sensor_mapping[police_address]+=police_change;  
+  }
+}
+
+void userIncreaseBrightness(unsigned long time){
+  getSensorValue();
+  
+  stop_sensor = true;
+  
+  police_time = time;
+  police_address = sensor_value;
+  police_change += 1;
+  
+  byte real_value = sensor_mapping[sensor_value];
+  setBrightness(real_value+police_change);
+}
+
+void userDecreaseBrightness(unsigned long time){
+  getSensorValue();
+  
+  stop_sensor = true;
+  
+  police_time = time;
+  police_address = sensor_value;
+  police_change -= 1;
+  
+  byte real_value = sensor_mapping[sensor_value];
+  setBrightness(real_value+police_change);
+}
+
+void recieveInfrared() {
+  if (IRLremote.available())
+  {
+    
+    /*
+     * Important Note !
+     * Tested generic remote controls send the real button code ONCE at address 0xFF00
+     * if user keep pressing it sends 0x0 at address 0xFFFF
+     * 
+    */
+    
+    // Get the new data from the remote
+    auto data = IRLremote.read();
+
+    if(data.address == 0xFF00 /* To prevent recieving 0, look at note above */){
+      switch(data.command){
+        case BUTTON_MINUS:
+          userIncreaseBrightness(millis());
+          break;
+        case BUTTON_PLUS:
+          userDecreaseBrightness(millis());
+          break;
+      }
+      Serial.print(F("Address: 0x"));
+      Serial.println(data.address, HEX);
+      Serial.print(F("Command: 0x"));
+      Serial.println(data.command, HEX);
+      Serial.println();
+      
+    }
+  }
+}
 
 // Convert normal decimal numbers to binary coded decimal
 byte decToBcd(byte val)
@@ -326,23 +399,23 @@ void readDS3231time(byte *second, byte *minute, byte *hour, byte *dayOfWeek, byt
   *year = bcdToDec(Wire.read());
 }
 
-void buttonMinus()
-{
-  if (mode == MODE_NORMAL) {
-    Serial.print("Brightness Level Down: ");
-    adjustBrightness(-BRIGHTNESS_STEP);
-    Serial.println(brightness);
-  }
-}
-
-void buttonPlus()
-{
-  if (mode == MODE_NORMAL) {
-    Serial.print("Brightness Level Up: ");
-    adjustBrightness(BRIGHTNESS_STEP);
-    Serial.println(brightness);
-  }
-}
+//void buttonMinus()
+//{
+//  if (mode == MODE_NORMAL) {
+//    Serial.print("Brightness Level Down: ");
+//    adjustBrightness(-BRIGHTNESS_STEP);
+//    Serial.println(brightness);
+//  }
+//}
+//
+//void buttonPlus()
+//{
+//  if (mode == MODE_NORMAL) {
+//    Serial.print("Brightness Level Up: ");
+//    adjustBrightness(BRIGHTNESS_STEP);
+//    Serial.println(brightness);
+//  }
+//}
 
 void buttonSet()
 {
