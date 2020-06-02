@@ -21,8 +21,8 @@
 #define PIN_PHOTOCELL A1
 
 // Generic casette remote control codes
-#define BUTTON_MINUS 0x44
-#define BUTTON_PLUS 0x40
+#define BUTTON_MINUS 0x40
+#define BUTTON_PLUS 0x44
 #define BUTTON_SET 0x9
 #define BUTTON_0 0x16
 #define BUTTON_1 0xc
@@ -62,6 +62,7 @@ int police_change = 0;
 int sensor_value;
 byte sensor_mapping[1024];
 bool stop_sensor = false;
+byte trueValueaddress = 1;
 
 CNec IRLremote;
 SoftwareSerial ESPserial(PD5, PD6); // RX | TX
@@ -83,9 +84,11 @@ void setup()
     Serial.println(F("You did not choose a valid pin."));
   }
 
-  //refreshSensorMapping();
-  setSensorMapping();
+  refreshSensorMapping();
+  //setSensorMapping();
   setBrightness(brightness);
+
+  dumpMapping();
 }
 
 void refreshSensorMapping() {
@@ -107,17 +110,23 @@ void setSensorMapping() {
   values[0] = 0;
   values[9] = 1023;
 
-  goYaBrain(values);
+  goYaBrain();
 }
 
-void goYaBrain(int* collected) {
+void saveTo3amoEEPROM(){
+  for(int i =0;i<1024;i++){
+    EEPROM.write(i, sensor_mapping[i]);  
+  }  
+}
+
+void goYaBrain() {
 
   byte valid_address_counter = 0;
   for (int i = 0; i < 10; i++) {
 
-    if (collected[i] >= 0 && collected[i] <= 1023) {
+    if (values[i] >= 0 && values[i] <= 1023) {
       valid_address_counter += 1;
-      Serial.println(collected[i]);
+      Serial.println(values[i]);
     }
 
   }
@@ -135,7 +144,9 @@ void goYaBrain(int* collected) {
     doTheMagic(values[valid_address_counter-2], values[9]);
   }
 
-  dumpMapping();
+  //dumpMapping();
+  
+  saveTo3amoEEPROM();
 }
 
 void doTheMagic(int addr_1, int addr_2) {
@@ -312,6 +323,9 @@ void sensorPolice() {
   if (police_time + 5000 < millis()) {
     stop_sensor = false;
     sensor_mapping[police_address] += police_change;
+    values[trueValueaddress] = police_address;
+    trueValueaddress += 1;
+    goYaBrain();
   }
 }
 
