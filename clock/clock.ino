@@ -88,64 +88,86 @@ void setup()
   setBrightness(brightness);
 }
 
-void refreshSensorMapping(){
-  for(int i =0;i<=1023;i++){
-    sensor_mapping[i] = EEPROM.read(i);  
-  }  
+void refreshSensorMapping() {
+  for (int i = 0; i <= 1023; i++) {
+    sensor_mapping[i] = EEPROM.read(i);
+  }
 }
 
-int values[10] = {1024,1024,1024,1024,1024,1024,1024,1024,1024,1024};
-void setSensorMapping(){
-  for(int i =0;i<=1023;i++){sensor_mapping[i]=0;}
-  
+int values[10] = {1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024};
+void setSensorMapping() {
+  for (int i = 0; i <= 1023; i++) {
+    sensor_mapping[i] = 0;
+  }
+
   sensor_mapping[0] = 1;
+  sensor_mapping[617] = 128;
   sensor_mapping[1023] = 255;
 
   values[0] = 0;
+  values[1] = 617;
   values[9] = 1023;
-  
+
   goYaBrain(values);
 }
 
-void goYaBrain(int* collected){
+void goYaBrain(int* collected) {
 
-byte valid_address_counter = 0;
-for(int i =0;i<10;i++){
+  byte valid_address_counter = 0;
+  for (int i = 0; i < 10; i++) {
+
+    if (collected[i] >= 0 && collected[i] <= 1023) {
+      valid_address_counter += 1;
+      Serial.println(collected[i]);
+    }
+
+  }
+
+  Serial.println(valid_address_counter);
+
+
+ 
+
+
+  switch (valid_address_counter) {
+    case 2:
+      
+      break;
+
+    case 3:
+      doTheMagic(values[1], values[9]);
+      break;
+  }
+
+  dumpMapping();
+}
+
+void doTheMagic(int addr_1, int addr_2) {
   
-  if(collected[i] >= 0 && collected[i]<=1023){
-    valid_address_counter+=1;    
-    Serial.println(collected[i]);
+  int address_1;
+  int address_2;
+  int number;
+  int diffrence;
+  float change;
+  int coco = 0;
+  
+  address_1 = addr_1;
+  address_2 = addr_2;
+  number = address_2 - address_1;
+  diffrence = sensor_mapping[address_2] - sensor_mapping[address_1];
+  change = (float)diffrence / (float)number;
+  for (int i = address_1 + 1 ; i < address_2; i++) {
+    sensor_mapping[i] = sensor_mapping[address_1] + round(change * coco);
+    coco++;
   }
   
+  coco = 0;
 }
 
-Serial.println(valid_address_counter);
-
-
-switch (valid_address_counter){
-  case 2:
-  
-    int address_1 = values[0];
-    int address_2 = values[9];
-    int number = address_2-address_1;
-    int diffrence = sensor_mapping[address_2]-sensor_mapping[address_1];
-    float change = (float)diffrence/(float)number;
-    Serial.println(change);
-    for(int i = address_1;i<=number;i++){
-      sensor_mapping[i] = 1 + round(change*i);
-    }
-    
-   
-    break;  
-}
-
-dumpMapping();
-}
-
-void dumpMapping(){
-  for(int i =0;i<=1023;i++){
+void dumpMapping() {
+  for (int i = 0; i <= 1023; i++) {
     Serial.println(sensor_mapping[i]);
-  }  
+  }
 }
 
 void setBrightness(byte value)
@@ -261,13 +283,13 @@ void loop()
   blink = (millis() % 1000) / 500;
 
   //autoAdjust();
-  if(!stop_sensor){
+  if (!stop_sensor) {
     getSensorValue();
     updateTransistor();
-  }else{
+  } else {
     sensorPolice();
   }
-  
+
   recieveInfrared();
 
   updateTimeNTP();
@@ -277,11 +299,11 @@ void loop()
   delay(10);
 }
 
-void updateTransistor(){
+void updateTransistor() {
   adjustTransistor(EEPROM.read(sensor_value));
 }
 
-void getSensorValue(){
+void getSensorValue() {
   sensor_value = analogRead(PIN_PHOTOCELL);
 }
 
@@ -290,55 +312,55 @@ void adjustTransistor(int value) {
   setBrightness(real_value);
 }
 
-void sensorPolice(){
-  if(police_time + 5000 < millis()){
+void sensorPolice() {
+  if (police_time + 5000 < millis()) {
     stop_sensor = false;
-    sensor_mapping[police_address]+=police_change;  
+    sensor_mapping[police_address] += police_change;
   }
 }
 
-void userIncreaseBrightness(unsigned long time){
+void userIncreaseBrightness(unsigned long time) {
   getSensorValue();
-  
+
   stop_sensor = true;
-  
+
   police_time = time;
   police_address = sensor_value;
   police_change += 1;
-  
+
   byte real_value = sensor_mapping[sensor_value];
-  setBrightness(real_value+police_change);
+  setBrightness(real_value + police_change);
 }
 
-void userDecreaseBrightness(unsigned long time){
+void userDecreaseBrightness(unsigned long time) {
   getSensorValue();
-  
+
   stop_sensor = true;
-  
+
   police_time = time;
   police_address = sensor_value;
   police_change -= 1;
-  
+
   byte real_value = sensor_mapping[sensor_value];
-  setBrightness(real_value+police_change);
+  setBrightness(real_value + police_change);
 }
 
 void recieveInfrared() {
   if (IRLremote.available())
   {
-    
+
     /*
-     * Important Note !
-     * Tested generic remote controls send the real button code ONCE at address 0xFF00
-     * if user keep pressing it sends 0x0 at address 0xFFFF
-     * 
+       Important Note !
+       Tested generic remote controls send the real button code ONCE at address 0xFF00
+       if user keep pressing it sends 0x0 at address 0xFFFF
+
     */
-    
+
     // Get the new data from the remote
     auto data = IRLremote.read();
 
-    if(data.address == 0xFF00 /* To prevent recieving 0, look at note above */){
-      switch(data.command){
+    if (data.address == 0xFF00 /* To prevent recieving 0, look at note above */) {
+      switch (data.command) {
         case BUTTON_MINUS:
           userIncreaseBrightness(millis());
           break;
@@ -351,7 +373,7 @@ void recieveInfrared() {
       Serial.print(F("Command: 0x"));
       Serial.println(data.command, HEX);
       Serial.println();
-      
+
     }
   }
 }
