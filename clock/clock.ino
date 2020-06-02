@@ -1,11 +1,17 @@
-//#include <LiquidCrystal_I2C.h>
+/*
+    My bedroom Clock
+    ATMega328p based seven segment wall-clock
+
+    By Mohamed Abdul-Monem & Shams El-Din Mohamed
+    2017-2020
+*/
+
+// Libraries used - might differ when using CMake
+#include <SoftwareSerial.h>
 #include "IRLremote.h"
 #include "Wire.h"
-#include <SoftwareSerial.h>
 
-
-#define DS3231_I2C_ADDRESS 0x68
-
+// Pinout depebding on My-bed-room-clock PCB
 #define PIN_LATCH  8
 #define PIN_CLOCK 12
 #define PIN_DATA  11
@@ -13,72 +19,61 @@
 #define PIN_IR 2
 #define PIN_PHOTOCELL A1
 
+// Generic casette remote control codes
 #define BUTTON_MINUS 0x7
 #define BUTTON_PLUS 0x15
 #define BUTTON_SET 0x9
+#define BUTTON_0 0x16
+#define BUTTON_1 0xc
+#define BUTTON_2 0x18
+#define BUTTON_3 0x5E
+#define BUTTON_4 0x8
+#define BUTTON_5 0x1C
+#define BUTTON_6 0x5A
+#define BUTTON_7 0x42
+#define BUTTON_8 0x52
+#define BUTTON_9 0x4A
 
+// Definetions
 #define BRIGHTNESS_STEP 1
 #define BRIGHTNESS_SAMPESLS 100
-#define BRIGHTNESS_SAMP_TIME 10 
-
-// infrared commands
-#define _0 0x16
-#define _1 0xc
-#define _2 0x18
-#define _3 0x5E
-#define _4 0x8
-#define _5 0x1C
-#define _6 0x5A
-#define _7 0x42
-#define _8 0x52
-#define _9 0x4A
+#define BRIGHTNESS_SAMP_TIME 10
 
 #define MODE_NORMAL 1
 #define MODE_SET_HOUR 100
 #define MODE_SET_MINUTE 101
 
-//#define INCREASE_DECREASE_FACTOR -25
+// IIC Addresses
+#define DS3231_I2C_ADDRESS 0x68
 
+// Variables
 byte h1, h2, m1, m2;
-
-// loop counter
-int count = 0;
-
+int count = 0; // loop counter
 int brightness_values[BRIGHTNESS_SAMPESLS];
-
 byte mode;
 byte blink = 0;
-
-// Set the LCD address to 0x27 for a 16 chars and 2 line display
-//LiquidCrystal_I2C lcd(0x27, 16, 2);
+byte brightness = 126;
 
 CNec IRLremote;
 SoftwareSerial ESPserial(PD5, PD6); // RX | TX
-
-byte brightness = 126;
-
 
 void setup()
 {
   mode = MODE_NORMAL;
   Serial.begin(9600);
-  ESPserial.begin(9600);  
+  ESPserial.begin(9600);
   Wire.begin();
   //setDS3231time(0,41,21,1,20,6,19);
-  // initialize the LCD
-//  lcd.begin();
 
-  // Turn on the blacklight and print a message.
-//  lcd.backlight();
-  
   pinMode(PIN_LATCH, OUTPUT);
   pinMode(PIN_CLOCK, OUTPUT);
   pinMode(PIN_DATA, OUTPUT);
-  pinMode(PIN_TRANSISTOR, OUTPUT);  
-  //pinMode(PIN_IR, OUTPUT);
+  pinMode(PIN_TRANSISTOR, OUTPUT);
+
   if (!IRLremote.begin(PIN_IR)) {
     Serial.println(F("You did not choose a valid pin."));
   }
+
   setBrightness();
 }
 
@@ -105,12 +100,13 @@ void readTime() {
   m1 = m / 10;
   m2 = m % 10;
 
-/*
-  h1 = 1;
-  h2 = 8;
-  m1 = 8;
-  m2 = 8;
-*/
+  /*
+    h1 = 1;
+    h2 = 8;
+    m1 = 8;
+    m2 = 8;
+  */
+
 }
 
 int a(byte x) {
@@ -144,15 +140,15 @@ int g(byte x) {
 void refreshDisplay()
 {
   /* +-----------------+-----------------+-----------------+
-   * |      Byte 3     |      Byte 2     |     Byte 1      |
-   * | 7 6 5 4 3 2 1 0 | 7 6 5 4 3 2 1 0 | 7 6 5 4 3 2 1 0 |
-   * +-----------------+-----------------+-----------------+
-   * | : c b g f e d c | b a g f e d c b | a g f e d c b a |
-   * | : 4 4 3 3 3 3 3 | 3 3 2 2 2 2 2 2 | 2 1 1 1 1 1 1 1 |
-   * +-----------------+-----------------+-----------------+
-   */
-  byte b1 = 
-      (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (a(m2) << 0))
+     |      Byte 3     |      Byte 2     |     Byte 1      |
+     | 7 6 5 4 3 2 1 0 | 7 6 5 4 3 2 1 0 | 7 6 5 4 3 2 1 0 |
+     +-----------------+-----------------+-----------------+
+     | : c b g f e d c | b a g f e d c b | a g f e d c b a |
+     | : 4 4 3 3 3 3 3 | 3 3 2 2 2 2 2 2 | 2 1 1 1 1 1 1 1 |
+     +-----------------+-----------------+-----------------+
+  */
+  byte b1 =
+    (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (a(m2) << 0))
     | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (b(m2) << 1))
     | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (c(m2) << 2))
     | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (d(m2) << 3))
@@ -160,9 +156,9 @@ void refreshDisplay()
     | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (f(m2) << 5))
     | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (g(m2) << 6))
     | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (a(m1) << 7));
-    
-  byte b2 = 
-      (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (b(m1) << 0))
+
+  byte b2 =
+    (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (b(m1) << 0))
     | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (c(m1) << 1))
     | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (d(m1) << 2))
     | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (e(m1) << 3))
@@ -170,9 +166,9 @@ void refreshDisplay()
     | (mode == MODE_SET_MINUTE && blink == 0 ? 0 : (g(m1) << 5))
     | (mode == MODE_SET_HOUR && blink == 0 ? 0 : (a(h2) << 6))
     | (mode == MODE_SET_HOUR && blink == 0 ? 0 : (b(h2) << 7));
-    
-  byte b3 = 
-      (mode == MODE_SET_HOUR && blink == 0 ? 0 : (c(h2) << 0))
+
+  byte b3 =
+    (mode == MODE_SET_HOUR && blink == 0 ? 0 : (c(h2) << 0))
     | (mode == MODE_SET_HOUR && blink == 0 ? 0 : (d(h2) << 1))
     | (mode == MODE_SET_HOUR && blink == 0 ? 0 : (e(h2) << 2))
     | (mode == MODE_SET_HOUR && blink == 0 ? 0 : (f(h2) << 3))
@@ -181,11 +177,11 @@ void refreshDisplay()
     | (mode == MODE_SET_HOUR && blink == 0 ? 0 : ((h1 ? 1  << 6 : 0)))
     | (0     << 7);
 
-    digitalWrite(PIN_LATCH, LOW);
-    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~b3);  
-    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~b2);  
-    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~b1);  
-    digitalWrite(PIN_LATCH, HIGH);
+  digitalWrite(PIN_LATCH, LOW);
+  shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~b3);
+  shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~b2);
+  shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~b1);
+  digitalWrite(PIN_LATCH, HIGH);
 }
 
 void adjustBrightness(int x)
@@ -194,133 +190,109 @@ void adjustBrightness(int x)
   setBrightness();
 }
 
-void adjustMinute(int x)
-{
-  
-}
-
-void adjustHour(int x)
-{
-  
-}
-
 void loop()
 {
   blink = (millis() % 1000) / 500;
+
   autoAdjust();
   //recieveInfrared();
-  //digitalWrite(PIN_TRANSISTOR, HIGH);
+
   updateTimeNTP();
   readTime();
   refreshDisplay(); // Must run repeatedly
+
   delay(10);
 }
 
 
-void autoAdjust(){
-  /*for(int i =0; i<=BRIGHTNESS_SAMPESLS;i++){
-    brightness_values[i] = analogRead(PIN_PHOTOCELL)/4+INCREASE_DECREASE_FACTOR;
-    delay(BRIGHTNESS_SAMP_TIME);
-  } 
-  int s = 0;
-  for (int i=0; i< 100; i++)
-  {
-      s += brightness_values[i];
-  }
-  int avarege = s/BRIGHTNESS_SAMPESLS;
-  brightness = max(avarege, 1);
-  lcd.clear();
-  lcd.print(analogRead(PIN_PHOTOCELL));
-  setBrightness();
-  Serial.println(brightness);
-  */
-  brightness = analogRead(PIN_PHOTOCELL)/4;
+void autoAdjust() {
+  brightness = analogRead(PIN_PHOTOCELL) / 4;
   setBrightness();
 }
 
 
-void recieveInfrared(){
-  if (IRLremote.available())
-  {
-    // Light Led
-    //digitalWrite(PIN_IR, HIGH);
-
-    // Get the new data from the remote
-    auto data = IRLremote.read();
-
-    if (data.command == BUTTON_MINUS) {
-      buttonMinus();
-    }
-    else if (data.command == BUTTON_PLUS) {
-      buttonPlus();
-    }
-    else if (data.command == BUTTON_SET) {
-      buttonSet();
-    }
-    else if (data.command == _0) {
-      brightness = 0;
-      setBrightness();
-    }
-    else if (data.command == _1) {
-      brightness = 1;
-      setBrightness();
-    }
-    else if (data.command == _2) {
-      brightness = 2;
-      setBrightness();
-    }
-    else if (data.command == _3) {
-      brightness = 4;
-      setBrightness();
-    }
-    else if (data.command == _4) {
-      brightness = 8;
-      setBrightness();
-    }
-    else if (data.command == _5) {
-      brightness = 16;
-      setBrightness();
-    }
-    else if (data.command == _6) {
-      brightness = 32;
-      setBrightness();
-    }
-    else if (data.command == _7) {
-      brightness = 64;
-      setBrightness();
-    }
-    else if (data.command == _8) {
-      brightness = 128;
-      setBrightness();
-    }
-    else if (data.command == _9) {
-      brightness = 255;
-      setBrightness();
-    }
-    else {
-      // Print the protocol data
-      Serial.print(F("Address: 0x"));
-      Serial.println(data.address, HEX);
-      Serial.print(F("Command: 0x"));
-      Serial.println(data.command, HEX);
-      Serial.println();
-    }
-
-    // Turn Led off after printing the data
-    //digitalWrite(PIN_IR, LOW);
-  }
-} 
+//void recieveInfrared(){
+//  if (IRLremote.available())
+//  {
+//    // Light Led
+//    //digitalWrite(PIN_IR, HIGH);
+//
+//    // Get the new data from the remote
+//    auto data = IRLremote.read();
+//
+//    if (data.command == BUTTON_MINUS) {
+//      buttonMinus();
+//    }
+//    else if (data.command == BUTTON_PLUS) {
+//      buttonPlus();
+//    }
+//    else if (data.command == BUTTON_SET) {
+//      buttonSet();
+//    }
+//    else if (data.command == _0) {
+//      brightness = 0;
+//      setBrightness();
+//    }
+//    else if (data.command == _1) {
+//      brightness = 1;
+//      setBrightness();
+//    }
+//    else if (data.command == _2) {
+//      brightness = 2;
+//      setBrightness();
+//    }
+//    else if (data.command == _3) {
+//      brightness = 4;
+//      setBrightness();
+//    }
+//    else if (data.command == _4) {
+//      brightness = 8;
+//      setBrightness();
+//    }
+//    else if (data.command == _5) {
+//      brightness = 16;
+//      setBrightness();
+//    }
+//    else if (data.command == _6) {
+//      brightness = 32;
+//      setBrightness();
+//    }
+//    else if (data.command == _7) {
+//      brightness = 64;
+//      setBrightness();
+//    }
+//    else if (data.command == _8) {
+//      brightness = 128;
+//      setBrightness();
+//    }
+//    else if (data.command == _9) {
+//      brightness = 255;
+//      setBrightness();
+//    }
+//    else {
+//      // Print the protocol data
+//      Serial.print(F("Address: 0x"));
+//      Serial.println(data.address, HEX);
+//      Serial.print(F("Command: 0x"));
+//      Serial.println(data.command, HEX);
+//      Serial.println();
+//    }
+//
+//    // Turn Led off after printing the data
+//    //digitalWrite(PIN_IR, LOW);
+//  }
+//}
 
 // Convert normal decimal numbers to binary coded decimal
 byte decToBcd(byte val)
 {
-  return( (val/10*16) + (val%10) );
+  return ( (val / 10 * 16) + (val % 10) );
 }
 
 // Convert binary coded decimal to normal decimal numbers
 byte bcdToDec(byte val)
 {
-  return( (val/16*10) + (val%16) );
+  return ( (val / 16 * 10) + (val % 16) );
 }
 
 void setDS3231time(byte second, byte minute, byte hour, byte dayOfWeek, byte dayOfMonth, byte month, byte year)
@@ -383,79 +355,79 @@ void buttonSet()
   else if (mode == MODE_SET_HOUR) {
     mode = MODE_NORMAL;
   }
+
   Serial.print("Setting mode: ");
-  Serial.println(mode);  
+  Serial.println(mode);
 }
 
-void updateTimeNTP(){
-  if(ESPserial.available()) {
-      String readString;
-      while (ESPserial.available()) {
-          delay(1);
-          if (ESPserial.available() > 0) {
-              char c = ESPserial.read();
-              readString += c;
-          }
+void updateTimeNTP() {
+  if (ESPserial.available()) {
+    String readString;
+    while (ESPserial.available()) {
+      delay(1);
+      if (ESPserial.available() > 0) {
+        char c = ESPserial.read();
+        readString += c;
       }
+    }
 
-      
-      if (validTimeString(readString)) {
-        setTime(readString.substring(0, 10));
-      }
+    if (validTimeString(readString)) {
+      setTime(readString.substring(0, 10));
+    }
   }
 }
 
 bool validTimeString(String timeStringWithChecksum) {
   int len = timeStringWithChecksum.length();
   if (len < 11 || len > 13)
-      return false;
+    return false;
 
   String timeString = timeStringWithChecksum.substring(0, 10);
   String checkSumStr = timeStringWithChecksum.substring(10);
-  
+
   //Serial.print(timeStringWithChecksum);
   //Serial.print(" --> ");
   //Serial.print(timeString);
   //Serial.print(" : ");
   //Serial.print(checkSumStr);
   //Serial.print(" ==>");
-  
+
   String computedChecksum = checksum(timeString);
   computedChecksum += "\r\n";
-  
+
   //Serial.print(computedChecksum);
-  
-  if (computedChecksum != checkSumStr){
-      //Serial.println("Noooooo");
-      return false;
-      }
-  else{
-     // Serial.println("True");
-      return true;
+
+  if (computedChecksum != checkSumStr) {
+    //Serial.println("Noooooo");
+    return false;
+  }
+  else {
+    // Serial.println("True");
+    return true;
   }
 }
 
 String checksum(String s) {
-    byte c = 0;
-    for (int i = 0; i < s.length(); i++) {
-        c ^= s[i];
-    }
-    return String(c);
+  byte c = 0;
+  for (int i = 0; i < s.length(); i++) {
+    c ^= s[i];
+  }
+  return String(c);
 }
 
 
 void setTime(String timeString) {
-      unsigned long time = timeString.toInt();
-      //Serial.println(time);
-      // print the hour, minute and second:
-      int hr=(time  % 86400L) / 3600;
-      int min=(time % 3600) / 60;
-      int sec=(time % 60);
-    
-      Wire.beginTransmission(DS3231_I2C_ADDRESS);
-      Wire.write(0); // set next input to start at the seconds register
-      Wire.write(decToBcd(sec)); // set seconds
-      Wire.write(decToBcd(min)); // set minutes
-      Wire.write(decToBcd(hr)); // set hours
-      Wire.endTransmission();  
+  unsigned long time = timeString.toInt();
+  //Serial.println(time);
+  // print the hour, minute and second:
+  int hr = (time  % 86400L) / 3600;
+  int min = (time % 3600) / 60;
+  int sec = (time % 60);
+
+  Wire.beginTransmission(DS3231_I2C_ADDRESS);
+  Wire.write(0); // set next input to start at the seconds register
+  Wire.write(decToBcd(sec)); // set seconds
+  Wire.write(decToBcd(min)); // set minutes
+  Wire.write(decToBcd(hr)); // set hours
+  Wire.endTransmission();
 }
