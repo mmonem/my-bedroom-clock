@@ -95,19 +95,16 @@ void refreshSensorMapping() {
 }
 
 int values[10] = {1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024};
+
 void setSensorMapping() {
   for (int i = 0; i <= 1023; i++) {
     sensor_mapping[i] = 0;
   }
 
   sensor_mapping[0] = 1;
-  sensor_mapping[100] = 80;
-  sensor_mapping[617] = 128;
   sensor_mapping[1023] = 255;
 
   values[0] = 0;
-  values[1] = 100;
-  values[2] = 617;
   values[9] = 1023;
 
   goYaBrain(values);
@@ -127,21 +124,15 @@ void goYaBrain(int* collected) {
 
   Serial.println(valid_address_counter);
 
-  switch (valid_address_counter) {
-    case 2:
-      doTheMagic(values[0], values[9]);
-      break;
-
-    case 3:
-      doTheMagic(values[0], values[1]);
-      doTheMagic(values[1], values[9]);
-      break;
-      
-    case 4:
-      doTheMagic(values[0], values[1]);
-      doTheMagic(values[1], values[2]);
-      doTheMagic(values[2], values[9]);
-      break;
+  if(valid_address_counter == 2){
+    doTheMagic(values[0], values[9]);
+  }
+  else if(valid_address_counter/* 4 */ > 2){
+    for(int i = 0;i</*2*/valid_address_counter-2;i++){
+      doTheMagic(values[i/* 1 */], values[i+1/*2*/]);
+    }
+    
+    doTheMagic(values[valid_address_counter-2], values[9]);
   }
 
   dumpMapping();
