@@ -86,7 +86,6 @@ void setup()
   }
   
   //resetPoints();  
-  prepareArray();
   loadPoints();
   
   setBrightness(brightness);
@@ -302,27 +301,28 @@ void sensorPolice() {
     stop_sensor = false; 
   }
   
-//  if(save)
-//  {
-//    
-//    sensor_mapping[police_address] += police_change;
-//    points[trueValueaddress] = police_address;
-//    trueValueaddress += 1;
-//    Serial.println(values[trueValueaddress]);
-//    
-//    calculateCurve();  
-//    stop_sensor = false;
-//    save = false;
-//    
-//    digitalWrite(PIN_LATCH, LOW);
-//    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~B11111111);
-//    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~B11111111);
-//    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~B11111000);
-//    digitalWrite(PIN_LATCH, HIGH);
-//
-//    delay(2000);
-//    
-//  }
+  if(save)
+  {
+    
+    sensor_mapping[police_address] += police_change;
+    
+    
+    setPoint(police_address, sensor_mapping[police_address]);
+    loadPoints();
+
+    
+    stop_sensor = false;
+    save = false;
+    
+    digitalWrite(PIN_LATCH, LOW);
+    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, B11100100);
+    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, B10000100);
+    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, B01000001);
+    digitalWrite(PIN_LATCH, HIGH);
+
+    delay(2000);
+    
+  }
 }
 
 void userIncreaseBrightness(unsigned long time) {
@@ -332,7 +332,7 @@ void userIncreaseBrightness(unsigned long time) {
 
   police_time = time;
   police_address = sensor_value;
-  police_change += 1;
+  police_change += 10;
 
   byte real_value = sensor_mapping[sensor_value];
   setBrightness(real_value + police_change);
@@ -345,7 +345,7 @@ void userDecreaseBrightness(unsigned long time) {
 
   police_time = time;
   police_address = sensor_value;
-  police_change -= 1;
+  police_change += -10;
 
   byte real_value = sensor_mapping[sensor_value];
   setBrightness(real_value + police_change);
@@ -371,9 +371,11 @@ void recieveInfrared() {
       switch (data.command) {
         case BUTTON_PLUS:
           userIncreaseBrightness(millis());
+          Serial.println("INCREASE");
           break;
         case BUTTON_MINUS:
           userDecreaseBrightness(millis());
+          Serial.println("DECREASE");
           break;
         case BUTTON_SET:
           save = true;
@@ -560,6 +562,8 @@ void describePoints(){
 }
 
 void loadPoints(){
+  prepareArray();
+  
   byte n = EEPROM.read(0);
   for(int i =1; i <= n; i+=1) {
      sensor_mapping[fetchPointSensor(i)] = fetchPointValue(i);   
@@ -578,12 +582,6 @@ void resetPoints(){
   EEPROM.write(8, 255); 
 
   EEPROM.write(0, 2);
-
-  /*KOKOWAWA*/
-  setPoint(10, 1);
-  setPoint(100, 255);
-  setPoint(512, 14);
-  setPoint(720, 250);
 }
 
 void describePoint(unsigned int point){
