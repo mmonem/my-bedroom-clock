@@ -313,7 +313,8 @@ void sensorPolice() {
     
     stop_sensor = false;
     save = false;
-    
+    police_change = 0;
+      
     digitalWrite(PIN_LATCH, LOW);
     shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, B11100100);
     shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, B10000100);
@@ -325,29 +326,20 @@ void sensorPolice() {
   }
 }
 
-void userIncreaseBrightness(unsigned long time) {
+void userAdjustBrightness(unsigned long time,int change) {
   getSensorValue();
-
+  byte real_value = sensor_mapping[sensor_value];
+  
   stop_sensor = true;
 
   police_time = time;
   police_address = sensor_value;
-  police_change += 10;
+  
+  if((real_value + (police_change + change)) > -1 && (real_value + (police_change + change)) < 256){
+    police_change += change;  
+  }
 
-  byte real_value = sensor_mapping[sensor_value];
-  setBrightness(real_value + police_change);
-}
-
-void userDecreaseBrightness(unsigned long time) {
-  getSensorValue();
-
-  stop_sensor = true;
-
-  police_time = time;
-  police_address = sensor_value;
-  police_change += -10;
-
-  byte real_value = sensor_mapping[sensor_value];
+  Serial.println(police_change);
   setBrightness(real_value + police_change);
 }
 
@@ -369,14 +361,23 @@ void recieveInfrared() {
 
     if (data.address == 0xFF00 /* To prevent recieving 0, look at note above */) {
       switch (data.command) {
-        case BUTTON_PLUS:
-          userIncreaseBrightness(millis());
+        case 0x43:
+          userAdjustBrightness(millis(), 10);
           Serial.println("INCREASE");
           break;
-        case BUTTON_MINUS:
-          userDecreaseBrightness(millis());
+        case BUTTON_PLUS:
+          userAdjustBrightness(millis(), 1);
+          Serial.println("INCREASE");
+          break;
+        
+        case 0x40:
+          userAdjustBrightness(millis(), -10);
           Serial.println("DECREASE");
           break;
+        case BUTTON_MINUS:
+          userAdjustBrightness(millis(), -1);
+          Serial.println("DECREASE");
+          break;  
         case BUTTON_SET:
           save = true;
           break;
@@ -392,11 +393,11 @@ void recieveInfrared() {
           dumpMapping();
           break;
       }
-      Serial.print(F("Address: 0x"));
-      Serial.println(data.address, HEX);
-      Serial.print(F("Command: 0x"));
-      Serial.println(data.command, HEX);
-      Serial.println();
+//      Serial.print(F("Address: 0x"));
+//      Serial.println(data.address, HEX);
+//      Serial.print(F("Command: 0x"));
+//      Serial.println(data.command, HEX);
+//      Serial.println();
 
     }
   }
