@@ -51,9 +51,8 @@
 // Variables
 byte h1, h2, m1, m2;
 int count = 0; // loop counter
-int brightness_values[BRIGHTNESS_SAMPESLS];
 byte mode;
-byte blink = 0;
+bool blink = 0;
 byte brightness = 126;
 
 unsigned long police_time;
@@ -63,160 +62,88 @@ int police_change = 0;
 int sensor_value;
 byte sensor_mapping[1024];
 bool stop_sensor = false;
-int trueValueaddress = 1;
 bool save = false;
 
 CNec IRLremote;
 SoftwareSerial ESPserial(PD5, PD6); // RX | TX
 
-int values[10] = {1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024};
-
 void setup()
 {
   mode = MODE_NORMAL;
+  
   Serial.begin(9600);
   ESPserial.begin(9600);
   Wire.begin();
+  
   //setDS3231time(0,41,21,1,20,6,19);
 
   pinMode(PIN_LATCH, OUTPUT);
   pinMode(PIN_CLOCK, OUTPUT);
   pinMode(PIN_DATA, OUTPUT);
   pinMode(PIN_TRANSISTOR, OUTPUT);
-
   if (!IRLremote.begin(PIN_IR)) {
     Serial.println(F("You did not choose a valid pin."));
   }
   
-  refreshSensorMapping();
- 
-  //setSensorMapping();
-
-  //dumpMapping();
-  //goYaBrain();
-
+  //resetPoints();  
+  prepareArray();
+  loadPoints();
+  
   setBrightness(brightness);
+  
 }
 
-void refreshSensorMapping() {
-  for (int i = 0; i <= 1023; i++) {
-    sensor_mapping[i] = EEPROM.read(i);
-  }
-
-  sensor_mapping[0] = 0;
-  
-//  sensor_mapping[128] = 120;
-//  sensor_mapping[256] = 1;
-//  sensor_mapping[512] = 120;
-//  sensor_mapping[720] = 1;
-  
-  
-  sensor_mapping[1023] = 255;
-
-  values[0] = 0;
-//  values[1] = 128;
-//  values[2] = 256;
-//  values[3] = 512;
-//  values[4] = 720;
-  values[9] = 1023;
-
-}
-
-void setSensorMapping() {
-  for (int i = 0; i <= 1023; i++) {
+void prepareArray() {
+  for(int i = 0;i<1024;i++){
     sensor_mapping[i] = 0;
-  }
-
-  sensor_mapping[0] = 0;
-  
-//  sensor_mapping[128] = 120;
-//  sensor_mapping[256] = 1;
-//  sensor_mapping[512] = 120;
-//  sensor_mapping[720] = 1;
-  
-  
-  sensor_mapping[1023] = 255;
-
-  values[0] = 0;
-//  values[1] = 128;
-//  values[2] = 256;
-//  values[3] = 512;
-//  values[4] = 720;
-  values[9] = 1023;
-
-  //getPoints();
-  goYaBrain();
-}
-
-void getPoints(){
-  byte valid_address_counter = 0;
-  for (int i = 0; i < 10; i++) {
-    if (values[i] >= 0 && values[i] <= 1023) {
-      valid_address_counter += 1;
-      Serial.print(values[i]);
-      Serial.print(" ");
-      Serial.println(sensor_mapping[values[i]]);
-    }
   }  
 }
 
-void saveTo3amoEEPROM(){
-  for(int i =0;i<1024;i++){
-    EEPROM.write(i, sensor_mapping[i]);  
-  }  
-}
-
-void goYaBrain() {
-  byte valid_address_counter = 0;
-  for (int i = 0; i < 10; i++) {
-    if (values[i] >= 0 && values[i] <= 1023) {
-      valid_address_counter += 1;
-      Serial.println(values[i]);
-    }
-  }
-
-  Serial.println(valid_address_counter);
-
-  if(valid_address_counter == 2){
-    doTheMagic(values[0], values[9]);
-  }
+void calc(int addr_1, int addr_2) {
   
-  else if(valid_address_counter/* 4 */ > 2){
-    for(int i = 0;i</*2*/valid_address_counter-2;i++){
-      doTheMagic(values[i/* 1 */], values[i+1/*2*/]);
-    }
-    
-    doTheMagic(values[valid_address_counter-2], values[9]);
-  }
-}
-
-void doTheMagic(int addr_1, int addr_2) {
-  
-  int address_1;
-  int address_2;
-  int number;
-  int diffrence;
+  int address_1, address_2, number, diffrence, repeat;
   float change;
-  int coco = 0;
   
   address_1 = addr_1;
   address_2 = addr_2;
   number = address_2 - address_1;
   diffrence = sensor_mapping[address_2] - sensor_mapping[address_1];
   change = (float)diffrence / (float)number;
+  repeat = 0;
+  
   for (int i = address_1 + 1 ; i < address_2; i++) {
-    sensor_mapping[i] = sensor_mapping[address_1] + round(change * coco);
-    coco++;
+    sensor_mapping[i] = sensor_mapping[address_1] + round(change * repeat);
+    repeat++;
   }
   
-  coco = 0;
+  repeat = 0;
+}
+
+
+int pointsTrue[20];
+int pointsTrueCounter = 0;
+
+int trueAddress[10];
+byte counter = 0;
+void calculateCurve(){
+  Serial.println("Calculating....");
+  for(int i = 0;i<1024;i++){
+   if(sensor_mapping[i] > 0){
+    trueAddress[counter] = i;
+    counter++;  
+   }  
+  }
+  for(int i =0;i<counter;i++){
+    calc(trueAddress[i], trueAddress[i+1]);  
+  }
+  counter = 0 ;
+  Serial.println("Fineshed !");
 }
 
 void dumpMapping() {
   for (int i = 0; i <= 1023; i++) {
     Serial.println(sensor_mapping[i]);
   }
-  getPoints();
 }
 
 void setBrightness(byte value)
@@ -276,7 +203,7 @@ int f(byte x) {
 }
 
 int g(byte x) {
-  return (x == 2) || (x == 3) || (x == 4) || (x == 5) || (x == 6) || (x == 8) || (x == 9);
+  return (x == 2) || (x == 3) ||   (x == 4) || (x == 5) || (x == 6) || (x == 8) || (x == 9);
 }
 
 void refreshDisplay()
@@ -375,56 +302,27 @@ void sensorPolice() {
     stop_sensor = false; 
   }
   
-  if(save)
-  {
-    
-    sensor_mapping[police_address] += police_change;
-    values[trueValueaddress] = police_address;
-    trueValueaddress += 1;
-    Serial.println(values[trueValueaddress]);
-    
-    goYaBrain();  
-    stop_sensor = false;
-    saveTo3amoEEPROM();
-    save = false;
-    
-    digitalWrite(PIN_LATCH, LOW);
-    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~B11111111);
-    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~B11111111);
-    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~B11111000);
-    digitalWrite(PIN_LATCH, HIGH);
-
-    delay(2000);
-    
-  }
-}
-
-void clear(){
-  for (int i = 0; i <= 1023; i++) {
-    sensor_mapping[i] = 0;
-  }
-  for (int i = 0; i <= 9; i++) {
-    values[i] = 1024;
-  }
-   sensor_mapping[0] = 0;
-  
-//  sensor_mapping[128] = 120;
-//  sensor_mapping[256] = 1;
-//  sensor_mapping[512] = 120;
-//  sensor_mapping[720] = 1;
-  
-  
-  sensor_mapping[1023] = 255;
-
-  values[0] = 0;
-//  values[1] = 128;
-//  values[2] = 256;
-//  values[3] = 512;
-//  values[4] = 720;
-  values[9] = 1023;
-
-  //getPoints();
-  goYaBrain(); 
+//  if(save)
+//  {
+//    
+//    sensor_mapping[police_address] += police_change;
+//    points[trueValueaddress] = police_address;
+//    trueValueaddress += 1;
+//    Serial.println(values[trueValueaddress]);
+//    
+//    calculateCurve();  
+//    stop_sensor = false;
+//    save = false;
+//    
+//    digitalWrite(PIN_LATCH, LOW);
+//    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~B11111111);
+//    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~B11111111);
+//    shiftOut(PIN_DATA, PIN_CLOCK, MSBFIRST, ~B11111000);
+//    digitalWrite(PIN_LATCH, HIGH);
+//
+//    delay(2000);
+//    
+//  }
 }
 
 void userIncreaseBrightness(unsigned long time) {
@@ -453,6 +351,8 @@ void userDecreaseBrightness(unsigned long time) {
   setBrightness(real_value + police_change);
 }
 
+//// INFRARED API ////////////////////////////////////////////////////////////////////
+
 void recieveInfrared() {
   if (IRLremote.available())
   {
@@ -479,10 +379,14 @@ void recieveInfrared() {
           save = true;
           break;
         case BUTTON_RESET:
-          clear();
-          saveTo3amoEEPROM();
+          resetPoints();
+          prepareArray();
+          loadPoints();
           break;
         case 0x47:
+          Serial.println("==================<>==================");
+          describePoints();
+          Serial.println("==================<>==================");
           dumpMapping();
           break;
       }
@@ -495,6 +399,8 @@ void recieveInfrared() {
     }
   }
 }
+
+//// INFRARED API Finishes ////////////////////////////////////////////////////////////////////
 
 // Convert normal decimal numbers to binary coded decimal
 byte decToBcd(byte val)
@@ -644,3 +550,100 @@ void setTime(String timeString) {
   Wire.write(decToBcd(hr)); // set hours
   Wire.endTransmission();
 }
+
+///// EEPROM API ///////////////////////////////////////////////////////////////////////////////////////
+
+void describePoints(){
+  for(int i =1;i<=EEPROM.read(0);i+=1){
+    describePoint(i);      
+  }
+}
+
+void loadPoints(){
+  byte n = EEPROM.read(0);
+  for(int i =1; i <= n; i+=1) {
+     sensor_mapping[fetchPointSensor(i)] = fetchPointValue(i);   
+  }
+  
+  calculateCurve();
+}
+
+void resetPoints(){
+  EEPROM.write(3, 0); 
+  EEPROM.write(4, 0); 
+  EEPROM.write(5, 1); 
+
+  EEPROM.write(6, B11111111); 
+  EEPROM.write(7, B00000011); 
+  EEPROM.write(8, 255); 
+
+  EEPROM.write(0, 2);
+
+  /*KOKOWAWA*/
+  setPoint(10, 1);
+  setPoint(100, 255);
+  setPoint(512, 14);
+  setPoint(720, 250);
+}
+
+void describePoint(unsigned int point){
+   Serial.print("Sensor Value: ");
+   Serial.print(fetchPointSensor(point));
+   Serial.print(" Transistor Value: ");
+   Serial.println(fetchPointValue(point));
+}
+
+unsigned int fetchPointSensor(unsigned int point){
+  return ByteCombine(EEPROM.read(point*3+1),EEPROM.read(point*3));
+}
+
+unsigned int fetchPointValue(unsigned int point){
+  return EEPROM.read(point*3+2);
+}
+
+byte getPointValue(unsigned int address){
+  byte r;
+  for(int i =1;i<=EEPROM.read(0);i+=1){
+    if(fetchPointSensor(i) == address){
+      r = fetchPointValue(i);
+    }
+  }
+
+  return r;
+}
+
+void setPoint(unsigned int point, byte value){
+  unsigned int romValues = EEPROM.read(0);
+  romValues+=1;
+
+  EEPROM.write(romValues*3, IntSplitLowByte(point));
+  EEPROM.write(romValues*3+1, IntSplitHighByte(point));
+
+  EEPROM.write(romValues*3+2, value);
+  
+  EEPROM.write(0, romValues);
+}
+
+byte IntSplitHighByte(unsigned int x){
+  return highByte(x);  
+}
+
+byte IntSplitLowByte(unsigned int x){
+  return lowByte(x);  
+}
+
+
+unsigned int ByteCombine(byte x_high,byte x_low) {
+  unsigned int x;
+  for( int t = 7; t >= 0; t--)
+  {
+    bitWrite(x, t,  bitRead(x_low, t));
+  }
+  for( int t = 7; t >= 0; t--)
+  {
+    bitWrite(x, t + 8,  bitRead(x_high, t));
+  }
+  return x;
+}
+
+///// EEPROM API FINISHES ///////////////////////////////////////////////////////////////////////////////////////
