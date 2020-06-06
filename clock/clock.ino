@@ -434,7 +434,7 @@ void userIncreaseBrightness(unsigned long time) {
 
   police_time = time;
   police_address = sensor_value;
-  police_change += 10;
+  police_change += 1;
 
   byte real_value = sensor_mapping[sensor_value];
   setBrightness(real_value + police_change);
@@ -447,7 +447,7 @@ void userDecreaseBrightness(unsigned long time) {
 
   police_time = time;
   police_address = sensor_value;
-  police_change -= 10;
+  police_change -= 1;
 
   byte real_value = sensor_mapping[sensor_value];
   setBrightness(real_value + police_change);
